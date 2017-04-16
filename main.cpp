@@ -11,38 +11,42 @@
 using namespace std;
 
 #include "Glitcher.hpp"
+#include "InputParser.hpp"
 
-
-
+void saveGlitchedToFile(Glitcher& glitcher, const std::string& outputDir, int iteration) {
+	sf::Image img = glitcher.getTexture().copyToImage();
+	img.saveToFile(outputDir + "/" + to_string(iteration) + ".jpeg");
+}
 
 int main(int argc, char* argv[]) {
 	srand(time(0));
-	remove("newpic.jpg");
 
-	std::string filename = "pic.jpg";
 	sf::Int32 maxAmount = 256, iterations = 2, delay = 50;
-	if(argc >= 2) {
-		maxAmount = atoi(argv[1]);
-		if(argc >= 3) {
-			iterations = atoi(argv[2]);
 
-			if(argc >= 4) {
-				delay = atoi(argv[3]);
-
-				if(argc >= 5) {
-					filename = argv[4];
-				}
-			}
-		}
+	InputParser input(argc, argv);
+	auto& filename = input.getCmdOption(0);
+	if(filename.empty()) {
+		cerr << "Missing filename" << endl;
+		return 1;
 	}
 
-
-	/*ofstream output("newpic.jpg", ios::binary | ios::out);
-	copy(data.begin(), data.end(), std::ostreambuf_iterator<char>(output));
-	output.close();*/
-
-
 	Glitcher glitcher(filename);
+
+	auto& maxAmountS = input.getCmdOption(1);
+	if(!maxAmountS.empty()) maxAmount = stoi(maxAmountS);
+
+	auto& iterationsS = input.getCmdOption(2);
+	if(!iterationsS.empty()) iterations = stoi(iterationsS);
+
+	auto& delayS = input.getCmdOption(3);
+	if(!delayS.empty()) delay = stoi(delayS);
+
+	auto& outputDir = input.getCmdOption("-o");
+	if(!outputDir.empty()) {
+		system(std::string("mkdir -p " + outputDir).c_str());
+		saveGlitchedToFile(glitcher, outputDir, 0);
+	}
+
 
 	sf::Texture tex;
 	tex.loadFromFile(filename);
@@ -63,6 +67,7 @@ int main(int argc, char* argv[]) {
 	sf::Clock dClock;
 	sf::Time dt;
 	sf::Time delayTime = sf::milliseconds(delay);
+	int iteration = 1;
 	while(window.isOpen()) {
 		dt = dClock.restart();
 
@@ -82,6 +87,11 @@ int main(int argc, char* argv[]) {
 			double seed = (rand() % 1000) / 1000.0;
 			glitcher.glitch(amount, seed, iterations);
 			spr.setTexture(glitcher.getTexture());
+
+			if(!outputDir.empty()) {
+				saveGlitchedToFile(glitcher, outputDir, iteration);
+				iteration++;
+			}
 		}
 
 		window.clear();
